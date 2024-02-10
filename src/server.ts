@@ -16,8 +16,8 @@ export default class Server {
         this._server = express();
     }
 
-    init(dir: string): Promise<void> {
-        this._server.use(express.static(dir, { dotfiles: "allow" }));
+    init(dir: string, basePath: string): Promise<void> {
+        this._server.use(basePath, express.static(dir, { dotfiles: "allow" }));
         this._server.get("*", (_req, res) => res.sendFile(path.join(dir, "index.html")));
 
         return new Promise(resolve => {

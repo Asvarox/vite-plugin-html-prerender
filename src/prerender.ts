@@ -1,35 +1,43 @@
-import type { Plugin } from "vite";
+import type { Plugin, ResolvedConfig } from "vite";
 import { HtmlPrerenderOptions, RenderedRoute } from "./types";
 import Server from "./server";
 import Renderer from "./renderer";
 import { minify } from "html-minifier";
+import path from "path";
 
 const port = 0;
 const defaultSelector = "#root";
 
 const htmlPrerender = (options: HtmlPrerenderOptions): Plugin => {
+    let config: ResolvedConfig | null = null;
     return {
+        configResolved: (resolvedConfig) => {
+            config = resolvedConfig;
+        },
         name: "vite-plugin-html-prerender",
         apply: "build",
         enforce: "post",
         async closeBundle() {
-            await emitRendered(options);
-        }
+            await emitRendered(options, config);
+        },
     };
 };
 
-const emitRendered = async (options: HtmlPrerenderOptions): Promise<void> => {
+const emitRendered = async (options: HtmlPrerenderOptions, config: ResolvedConfig | null): Promise<void> => {
     const server = new Server(port);
     const renderer = new Renderer();
 
-    await server.init(options.staticDir).then(async () => {
+    const basePath = config?.base && path.isAbsolute(config.base) ? config.base : "/";
+
+    await server.init(options.staticDir, basePath).then(async () => {
         console.log("\n[vite-plugin-html-prerender] Starting headless browser...");
         return await renderer.init();
     }).then(async () => {
         const renderedRoutes: RenderedRoute[] = [];
+        console.log("[vite-plugin-html-prerender] Base path for routes:", basePath);
         for (let route of options.routes) {
             console.log("[vite-plugin-html-prerender] Pre-rendering route:", route);
-            renderedRoutes.push(await renderer.renderRoute(route, server.runningPort, options.selector || defaultSelector));
+            renderedRoutes.push(await renderer.renderRoute(basePath, route, server.runningPort, options.selector || defaultSelector));
         }
         return renderedRoutes;
     }).then(renderedRoutes => {

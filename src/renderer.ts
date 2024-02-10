@@ -20,13 +20,13 @@ export default class Renderer {
         await this._browser?.close();
     }
 
-    async renderRoute(route: string, port: number, selector: string): Promise<RenderedRoute> {
+    async renderRoute(basePath: string, route: string, port: number, selector: string): Promise<RenderedRoute> {
         if (!this._browser) {
             throw Error("Headless browser instance not started. Failed to prerender.");
         }
 
         const page = await this._browser.newPage();
-        await page.goto(`http://localhost:${port}${route}`);
+        await page.goto(`http://localhost:${port}${path.join(basePath, route)}`);
         await page.waitForSelector(selector, { timeout: 10000 });
         const html = await page.content();
 
